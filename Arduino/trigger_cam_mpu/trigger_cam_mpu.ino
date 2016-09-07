@@ -26,16 +26,17 @@
 HardWire HWire(1, I2C_FAST_MODE); // I2c1 I2C_FAST_MODE
 const int MPU_addr=0x68;//0x69;  // I2C address of the MPU-6050
 int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
-unsigned char buffC[14]={0};
+unsigned char buffC[15]={0};
 int loop_time=0;
 int t_tmp = 0;
 int i;
 int dt = 1000; //(1ms)
 int next_time=0;
-int counter = 0;
+int8_t counter = 0;
 const int trigger_freq = 33; //how many milliseconds to wait between 2 trigger of camera. = 33 for ~ 30 Hz
 const int shutter_value = 2; // how many milliseconds the shutter of camera should be open ?
 bool cam_trigger_flag = false;
+int8_t cam_trigger_down_flag = false;
 
 void setup() {
   
@@ -105,13 +106,11 @@ void loop() {
   //double control to avoid digitalWrite at each step ! only use digitalWrite when necessary
   if(cam_trigger_flag == true && counter == 0){
     digitalWrite(CAM_TRIGGER_PIN, HIGH);
-    buffC[0]=0x42; //control character
   }
-  else if(cam_trigger_flag == false && counter == (shutter_value+1)){
+  else if(cam_trigger_flag == false && counter == (shutter_value)){
     digitalWrite(CAM_TRIGGER_PIN, LOW);
-    buffC[0]=0x43; //control character
+    cam_trigger_down_flag = 1;
   }
-  else buffC[0]=0x47; //control character
     
   MPU_read_RAW();
 
@@ -129,7 +128,7 @@ void loop() {
 
   if (flag_write_serial)
   {
-    //buffC[0] //control character is defined above follozing different situations
+    buffC[0] = 0x47; //control character is defined above follozing different situations
     buffC[1]=AcX&0xff;
     buffC[2]=(AcX>>8)&0xff;
     buffC[3]=AcY&0xff;
@@ -142,10 +141,12 @@ void loop() {
     buffC[10]=(GyY>>8)&0xff;
     buffC[11]=GyZ&0xff;
     buffC[12]=(GyZ>>8)&0xff;
+    buffC[13]= counter;
+    buffC[14] = cam_trigger_down_flag;
 
-    Serial.write(buffC,13);
+    Serial.write(buffC,15);
   }
-
+  // reset counters, booleans, ...
   counter++;
   if(counter == shutter_value)
     cam_trigger_flag = false;
@@ -153,6 +154,8 @@ void loop() {
     cam_trigger_flag = true;
     counter = 0;
   }
+  if(cam_trigger_down_flag == 1)
+    cam_trigger_down_flag = 0;
 
   while(micros()<next_time) delayMicroseconds(1); //1khz
   }
