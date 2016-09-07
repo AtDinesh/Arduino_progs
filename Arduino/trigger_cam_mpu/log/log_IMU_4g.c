@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
 	double gyro_LSB_rad = gyro_LSB * sec_to_rad;
   double Ax, Ay, Az, Gx, Gy, Gz;
   int16_t Axi, Ayi, Azi, Gxi, Gyi, Gzi;
+	bool shutter_ON = false;
 
   double current_time;
   double process_time;
@@ -75,6 +76,14 @@ int main(int argc, char *argv[])
     
     do n = read(fd, buf, 1);//READ IT
     while (buf[0]!=0x47 || buf[0]!=0x42 || buf[0]!=0x43);
+		if (buf[0]!=0x42){
+			shutter_ON = true;
+			printf("\t\tSHUTTER turned ON\n");
+		}
+		else if (buf[0]!=0x43){
+			shutter_ON = false;
+			printf("\t\tSHUTTER turned OFF\n");
+		}
     n = read(fd, buf, 12);
       
      gettimeofday(&tv, NULL);
