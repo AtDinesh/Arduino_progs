@@ -17,6 +17,7 @@
 typedef int bool;
 #define true 1
 #define false 0
+//#define DEBUG
 
 int main(int argc, char *argv[])
 {
@@ -35,6 +36,8 @@ int main(int argc, char *argv[])
 	double gyro_LSB_rad = gyro_LSB * sec_to_rad;
   double Ax, Ay, Az, Gx, Gy, Gz;
   int16_t Axi, Ayi, Azi, Gxi, Gyi, Gzi;
+	int counter;
+	int shutter_down_flag;
 	bool shutter_ON = false;
 
   double current_time;
@@ -67,24 +70,16 @@ int main(int argc, char *argv[])
     /*open logFile*/
   logFile = fopen(argv[1], "w");
   /*write header*/
-  fprintf(logFile,"%%Current_Time\t Acc_x\t Acc_y\t Acc_z\t Gyro_x\t Gyro_y\t Gyro_z\n");
+  fprintf(logFile,"%%Current_Time\t Acc_x\t Acc_y\t Acc_z\t Gyro_x\t Gyro_y\t Gyro_z\t counter\t shutter_down_flag\n");
   gettimeofday(&start_tv, NULL);
   while(1)
   {
 	gettimeofday(&start_loop, NULL);
-    read(fd, buf, 1);
     
     do n = read(fd, buf, 1);//READ IT
-    while (buf[0]!=0x47 || buf[0]!=0x42 || buf[0]!=0x43);
-		if (buf[0]!=0x42){
-			shutter_ON = true;
-			printf("\t\tSHUTTER turned ON\n");
-		}
-		else if (buf[0]!=0x43){
-			shutter_ON = false;
-			printf("\t\tSHUTTER turned OFF\n");
-		}
-    n = read(fd, buf, 12);
+
+    while (buf[0]!=0x47);
+    n = read(fd, buf, 14);
       
      gettimeofday(&tv, NULL);
      current_time = (tv.tv_sec - start_tv.tv_sec) +  (tv.tv_usec - start_tv.tv_usec) / 1000000.0;
@@ -96,10 +91,19 @@ int main(int argc, char *argv[])
 				Gx   = (double)((int16_t)((buf[7]<<8)|buf[6]))*gyro_LSB_rad;
 				Gy   = (double)((int16_t)((buf[9]<<8)|buf[8]))*gyro_LSB_rad;
 				Gz   = (double)((int16_t)((buf[11]<<8)|buf[10]))*gyro_LSB_rad;
+				counter = (int)(buf[12]);
+				shutter_down_flag = (int)(buf[13]);
+
+				#ifdef DEBUG
+					printf("0x%x\n", buf[12]);
+					if(counter == 0)
+						printf("\t\ttrigerring camera : SHUTTER ON!\n");
+					if (shutter_down_flag == 1) printf("\t\tSHUTTER OFF!\n");
+				#endif
 
 		gettimeofday(&t_loop, NULL);
 		//process_time = (t_loop.tv_sec - start_loop.tv_sec) +  (t_loop.tv_usec - start_loop.tv_usec) / 1000000.0;
-       fprintf(logFile,"%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\n", current_time, Ax, Ay, Az, Gx, Gy, Gz);
+       fprintf(logFile,"%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%d\t%d\n", current_time, Ax, Ay, Az, Gx, Gy, Gz, counter, shutter_down_flag);
        //printf("%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\n",current_time,Ax, Ay, Az, Gx, Gy, Gz);
     }
 	fflush(stdin);
