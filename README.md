@@ -10,6 +10,14 @@ Then run Arduino_STM32/<linux version>/install.sh
 Arduino_STM32 folder originialy comes from : 
 * https://github.com/rogerclarkmelbourne/Arduino_STM32
 
+Arduino sketches (.ino extension) must be compiled with Arduino IDE :
+* https://www.arduino.cc/en/Main/Software
+
+For log programs :
+ - Open Termina and go in the log folder
+ - run 'gcc -o <wished_program_name> log_IMU_4g.c'
+Replace <wished_program_name> with the name that you want for the output program.
+
 ### Reason to use STM32 :
 the STM32 has a 'real' USB compared to most of Arduino boards. In our application, this serial communication is of real importance since we will receive all the data through here ! We need full speed USB.
 
@@ -22,6 +30,8 @@ The MPU is set to work at full scale 4g (accelerometer) and 250 degree/sec (gyro
 you can either receive data in ASCII (to plot using arduino 1.6.11) or receive data on USB ports.
 Once received on USB, the log program will convert data into m/sec^2 for accelerometer and rad/sec for gyroscope. These conversions are done using constant variables with double precision.
 
+
+
 ###trigger_cam_mpu :
 
 This program will perform a hardware trigger on an external camera using the STM32 Maple mini.
@@ -33,5 +43,6 @@ Counter is set to 0 each time the camera will be triggered (i.e. at image acquis
 ShutterDownFlag passes to 1 when shutter is closed, to let us know how long the shutter was kept open. 
 
 The shutter value can also be changed in the Arduino code. (shutter_value variable)
+
 
 
