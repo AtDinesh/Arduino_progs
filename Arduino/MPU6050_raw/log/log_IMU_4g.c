@@ -72,12 +72,6 @@ int main(int argc, char *argv[])
   while(1)
   {
 	gettimeofday(&start_loop, NULL);
-    read(fd, buf, 1);
-    //printf("c=%x %c\n",buf[0],buf[0]);
-    //clear terminal
-    //printf("\x1b[2J");
-    //printf("\x1b[0;0H");
-    //write(fd, "r", 1);    //ASK FOR A MEASURE TO BE SEND IN RAW FORMAT
     
     do n = read(fd, buf, 1);//READ IT
     while (buf[0]!=0x47);
