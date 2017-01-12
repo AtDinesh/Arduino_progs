@@ -27,10 +27,10 @@ int main(int argc, char *argv[])
   int i;
   FILE * logFile;
   unsigned char buf[64] = {0};
-	double gravity = 9.81;
+	double gravity = 9.806;
 	double sec_to_rad = 3.14159265359/180.0;
 	double accel_LSB = 1.0/8192.0; // = 4.0/32768.0
-	double gyro_LSB = 1.0/13.01; // = 250.0/32768.0
+	double gyro_LSB = 1.0/131.0; // = 250.0/32768.0
 	double accel_LSB_g = accel_LSB * gravity;
 	double gyro_LSB_rad = gyro_LSB * sec_to_rad;
   double Ax, Ay, Az, Gx, Gy, Gz;
@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
   double current_time;
   double process_time;
   struct termios toptions;
-  int time_stop = 60;
+  int time_stop = 30;
   /* open serial port */
   printf("open port...\n");
   fd = open("/dev/ttyACM0", O_RDWR | O_NOCTTY);
