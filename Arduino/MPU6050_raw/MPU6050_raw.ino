@@ -51,9 +51,9 @@ void setup() {
   delay(1000);
   //setup imu
   //setting full scale Accelerometer to 4g
-  //HWire.beginTransmission(MPU_addr);
-  //HWire.write(MPU6050_RA_ACCEL_CONFIG);
-  //HWire.write(MPU6050_ACCEL_FS_4);
+  HWire.beginTransmission(MPU_addr);
+  HWire.write(MPU6050_RA_ACCEL_CONFIG);
+  HWire.write(MPU6050_ACCEL_FS_4);
   
   //writeBits(MPU_addr, MPU6050_RA_ACCEL_CONFIG, MPU6050_ACONFIG_AFS_SEL_BIT, MPU6050_ACONFIG_AFS_SEL_LENGTH, MPU6050_ACCEL_FS_4);
   

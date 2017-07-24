@@ -90,6 +90,7 @@ uint16_t fifoCount;     // count of all bytes currently in FIFO
 uint8_t fifoBuffer[64]; // FIFO storage buffer
 int i;
 int16_t AcX,AcY,AcZ,GyX,GyY,GyZ;
+int16_t AcX_offset, AcY_offset, AcZ_offset, GyX_offset, GyY_offset, GyZ_offset; 
 unsigned char buffC[14]={0};
 int next_time=0;
 int dt = 1000;
@@ -158,6 +159,25 @@ void setup() {
 
     // Set Accel Full Scale to 4g
     mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_4);
+    // Set Gyroscope full scale to 500 deg/sec
+    mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_500);
+    // Set bandwith to 256 Hz //switch to MPU6050_DLPF_BW_42 for previous configuration
+    mpu.setDLPFMode(MPU6050_DLPF_BW_256);
+
+    //mpu.setXAccelOffset(-3625);
+    //mpu.setYAccelOffset(-1767);
+    //mpu.setZAccelOffset(895);
+    //mpu.setXGyroOffset(-13);
+    //mpu.setYGyroOffset(-31);
+    //mpu.setZGyroOffset(11);
+    
+    mpu.setXAccelOffset(-114);
+    mpu.setYAccelOffset(-166);
+    mpu.setZAccelOffset(1259);
+    mpu.setXGyroOffset(138);
+    mpu.setYGyroOffset(-29);
+    mpu.setZGyroOffset(97);
+
 }
 
 
@@ -228,6 +248,17 @@ void loop() {
 
     Serial.write(buffC,13);
   }
+
+  /*if ((!flag_write_serial) && (!flag_send_raw)){
+    Serial.print("offsets are : \n");
+    Serial.print(AcX_offset);
+    Serial.print(","); Serial.print(AcY_offset);
+    Serial.print(","); Serial.print(AcZ_offset);
+    Serial.print(","); Serial.print(GyX_offset);
+    Serial.print(","); Serial.print(GyY_offset);
+    Serial.print(","); Serial.print(GyZ_offset);
+    Serial.print("\n");
+  }*/
 
     // blink LED to indicate activity
     digitalWrite(LED_PIN, (millis()%1000)<10);
