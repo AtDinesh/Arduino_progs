@@ -55,7 +55,7 @@ THE SOFTWARE.
 // specific I2C addresses may be passed as a parameter here
 //AD0 low = 0x68 //(default for SparkFun breakout and InvenSense evaluation board)
 //AD0 high = 0x69
-MPU6050 mpu;
+MPU6050 mpu1, mpu2;
 
 /* =========================================================================
    NOTE: In addition to connection 3.3v, GND, SDA, and SCL, this sketch
@@ -75,7 +75,8 @@ MPU6050 mpu;
    http://code.google.com/p/arduino/issues/detail?id=958
  * ========================================================================= */
 
-HardWire HWire(1, I2C_FAST_MODE); // I2c1 I2C_FAST_MODE
+HardWire HWire1(1, I2C_FAST_MODE); // I2c1 I2C_FAST_MODE
+HardWire HWire2(2, I2C_FAST_MODE);
 
 #define LED_PIN 33 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
 #define PULSE_PIN 17
@@ -89,9 +90,9 @@ uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
 uint16_t fifoCount;     // count of all bytes currently in FIFO
 uint8_t fifoBuffer[64]; // FIFO storage buffer
 int i;
-int16_t AcX,AcY,AcZ,GyX,GyY,GyZ;
-int16_t AcX_offset, AcY_offset, AcZ_offset, GyX_offset, GyY_offset, GyZ_offset; 
-unsigned char buffC[14]={0};
+int16_t AcX1,AcY1,AcZ1,GyX1,GyY1,GyZ1;
+int16_t AcX2,AcY2,AcZ2,GyX2,GyY2,GyZ2;
+unsigned char buffC[25]={0};
 int next_time=0;
 int dt = 1000;
 
@@ -125,7 +126,8 @@ void setup() {
     pinMode(PULSE_PIN, OUTPUT);
     
     // join I2C bus (I2Cdev library doesn't do this automatically)
-    HWire.begin();
+    HWire1.begin();
+    HWire2.begin();
 
     // initialize serial communication
     // (115200 chosen because it is required for Teapot Demo output, but it's
@@ -142,11 +144,13 @@ void setup() {
 //    delay(500);
     // initialize device
     Serial.println(F("Initializing I2C devices..."));
-    mpu.initialize();
+    mpu1.initialize();
+    mpu2.initialize();
 
     // verify connection
     Serial.println(F("Testing device connections..."));
-    Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
+    Serial.println(mpu1.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
+    Serial.println(mpu2.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
 
     // wait for ready
     //Serial.println(F("\nSend any character to begin DMP programming and demo: "));
@@ -158,25 +162,28 @@ void setup() {
     for(i=0;i<5;i++) {digitalWrite(LED_PIN, HIGH);delay(10);digitalWrite(LED_PIN, LOW);delay(300);}
 
     // Set Accel Full Scale to 4g
-    mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_4);
+    mpu1.setFullScaleAccelRange(MPU6050_ACCEL_FS_4);
+    mpu2.setFullScaleAccelRange(MPU6050_ACCEL_FS_4);
     // Set Gyroscope full scale to 500 deg/sec
-    mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_500);
+    mpu1.setFullScaleGyroRange(MPU6050_GYRO_FS_500);
+    mpu2.setFullScaleGyroRange(MPU6050_GYRO_FS_500);
     // Set bandwith to 256 Hz //switch to MPU6050_DLPF_BW_42 for previous configuration
-    mpu.setDLPFMode(MPU6050_DLPF_BW_256);
+    mpu1.setDLPFMode(MPU6050_DLPF_BW_256);
+    mpu2.setDLPFMode(MPU6050_DLPF_BW_256);
 
-    //mpu.setXAccelOffset(-3625);
-    //mpu.setYAccelOffset(-1767);
-    //mpu.setZAccelOffset(895);
-    //mpu.setXGyroOffset(-13);
-    //mpu.setYGyroOffset(-31);
-    //mpu.setZGyroOffset(11);
+    mpu1.setXAccelOffset(-3625);
+    mpu1.setYAccelOffset(-1767);
+    mpu1.setZAccelOffset(895);
+    mpu1.setXGyroOffset(-13);
+    mpu1.setYGyroOffset(-31);
+    mpu1.setZGyroOffset(11);
     
-    mpu.setXAccelOffset(-114);
-    mpu.setYAccelOffset(-166);
-    mpu.setZAccelOffset(1259);
-    mpu.setXGyroOffset(138);
-    mpu.setYGyroOffset(-29);
-    mpu.setZGyroOffset(97);
+    mpu2.setXAccelOffset(-114);
+    mpu2.setYAccelOffset(-166);
+    mpu2.setZAccelOffset(1259);
+    mpu2.setXGyroOffset(138);
+    mpu2.setYGyroOffset(-29);
+    mpu2.setZGyroOffset(97);
 
 }
 
@@ -190,7 +197,7 @@ void loop() {
 
     // reset interrupt flag and get INT_STATUS byte
     //mpuInterrupt = false;
-    //mpuIntStatus = mpu.getIntStatus();
+    //mpuIntStatus = mpu1.getIntStatus();
     
     unsigned char flag_send_raw = 0;
     unsigned char flag_write_serial = 1;
@@ -217,48 +224,59 @@ void loop() {
     //blink RED LED
     //digitalWrite(LED_PIN, (millis()%1000)<10);
     
-    mpu.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
+    mpu1.getMotion6(&AcX1, &AcY1, &AcZ1, &GyX1, &GyY1, &GyZ1);
+    mpu2.getMotion6(&AcX2, &AcY2, &AcZ2, &GyX2, &GyY2, &GyZ2);
 
     if (flag_send_raw)
   {
-    Serial.print(AcX);
-    Serial.print(","); Serial.print(AcY);
-    Serial.print(","); Serial.print(AcZ);
-    Serial.print(","); Serial.print(GyX);
-    Serial.print(","); Serial.print(GyY);
-    Serial.print(","); Serial.print(GyZ);
+    Serial.print(AcX1);
+    Serial.print(","); Serial.print(AcY1);
+    Serial.print(","); Serial.print(AcZ1);
+    Serial.print(","); Serial.print(GyX1);
+    Serial.print(","); Serial.print(GyY1);
+    Serial.print(","); Serial.print(GyZ1);
+    Serial.print("\n");
+
+    Serial.print(AcX2);
+    Serial.print(","); Serial.print(AcY2);
+    Serial.print(","); Serial.print(AcZ2);
+    Serial.print(","); Serial.print(GyX2);
+    Serial.print(","); Serial.print(GyY2);
+    Serial.print(","); Serial.print(GyZ2);
     Serial.print("\n");
   }
   
   if (flag_write_serial)
   {
     buffC[0]=0x47;
-    buffC[1]=AcX&0xff;
-    buffC[2]=(AcX>>8)&0xff;
-    buffC[3]=AcY&0xff;
-    buffC[4]=(AcY>>8)&0xff;
-    buffC[5]=AcZ&0xff;
-    buffC[6]=(AcZ>>8)&0xff;
-    buffC[7]=GyX&0xff;
-    buffC[8]=(GyX>>8)&0xff;
-    buffC[9]=GyY&0xff;
-    buffC[10]=(GyY>>8)&0xff;
-    buffC[11]=GyZ&0xff;
-    buffC[12]=(GyZ>>8)&0xff;
+    buffC[1]=AcX1&0xff;
+    buffC[2]=(AcX1>>8)&0xff;
+    buffC[3]=AcY1&0xff;
+    buffC[4]=(AcY1>>8)&0xff;
+    buffC[5]=AcZ1&0xff;
+    buffC[6]=(AcZ1>>8)&0xff;
+    buffC[7]=GyX1&0xff;
+    buffC[8]=(GyX1>>8)&0xff;
+    buffC[9]=GyY1&0xff;
+    buffC[10]=(GyY1>>8)&0xff;
+    buffC[11]=GyZ1&0xff;
+    buffC[12]=(GyZ1>>8)&0xff;
 
-    Serial.write(buffC,13);
+    buffC[13]=AcX2&0xff;
+    buffC[14]=(AcX2>>8)&0xff;
+    buffC[15]=AcY2&0xff;
+    buffC[16]=(AcY2>>8)&0xff;
+    buffC[17]=AcZ2&0xff;
+    buffC[18]=(AcZ2>>8)&0xff;
+    buffC[19]=GyX2&0xff;
+    buffC[20]=(GyX2>>8)&0xff;
+    buffC[21]=GyY2&0xff;
+    buffC[22]=(GyY2>>8)&0xff;
+    buffC[23]=GyZ2&0xff;
+    buffC[24]=(GyZ2>>8)&0xff;
+
+    Serial.write(buffC,25);
   }
-
-  /*if ((!flag_write_serial) && (!flag_send_raw)){
-    Serial.print("offsets are : \n");
-    Serial.print(AcX_offset);
-    Serial.print(","); Serial.print(AcY_offset);
-    Serial.print(","); Serial.print(AcZ_offset);
-    Serial.print(","); Serial.print(GyX_offset);
-    Serial.print(","); Serial.print(GyY_offset);
-    Serial.print(","); Serial.print(GyZ_offset);
-    Serial.print("\n");
-  }*/
 
     // blink LED to indicate activity
     digitalWrite(LED_PIN, (millis()%1000)<10);
