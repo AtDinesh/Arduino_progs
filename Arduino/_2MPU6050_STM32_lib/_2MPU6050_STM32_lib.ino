@@ -75,34 +75,29 @@ MPU6050 mpu1, mpu2;
    http://code.google.com/p/arduino/issues/detail?id=958
  * ========================================================================= */
 
-HardWire HWire(2, I2C_FAST_MODE); // I2c1 I2C_FAST_MODE
-//HardWire HWire(2, I2C_FAST_MODE); // I2c2 I2C_FAST_MODE
+HardWire HWire(1, I2C_FAST_MODE); // I2c1 I2C_FAST_MODE
+HardWire HWire2(2, I2C_FAST_MODE); // I2c2 I2C_FAST_MODE
+
+//TwoWire Wire(PB6, PB7, SOFT_STANDARD); //defined in I2Cdev.cpp
+//TwoWire Wire2(PB10, PB11, SOFT_STANDARD);
 
 #define LED_PIN 33 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
 #define PULSE_PIN 17
 bool blinkState = false;
 
 // MPU control/status vars
-bool dmpReady = false;  // set true if DMP init was successful
 uint8_t mpuIntStatus;   // holds actual interrupt status byte from MPU
-uint8_t devStatus;      // return status after each device operation (0 = success, !0 = error)
-uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
-uint16_t fifoCount;     // count of all bytes currently in FIFO
-uint8_t fifoBuffer[64]; // FIFO storage buffer
+uint8_t address = 0x68;
 int i;
 int16_t AcX1,AcY1,AcZ1,GyX1,GyY1,GyZ1,AcX2,AcY2,AcZ2,GyX2,GyY2,GyZ2;
 int16_t AcX_offset, AcY_offset, AcZ_offset, GyX_offset, GyY_offset, GyZ_offset; 
 unsigned char buffC[25]={0};
 int next_time=0;
 int dt = 1000;
-uint16_t micros_sample = 0 ;
-uint16_t micros_sample_m = 0 ;
-// orientation/motion vars
-Quaternion q;           // [w, x, y, z]         quaternion container
-VectorInt16 aa;         // [x, y, z]            accel sensor measurements
-VectorInt16 aaReal;     // [x, y, z]            gravity-free accel sensor measurements
-VectorInt16 aaWorld;    // [x, y, z]            world-frame accel sensor measurements
-VectorFloat gravity;    // [x, y, z]            gravity vector
+uint16_t micros_sample = 0;
+uint16_t micros_sample_m = 0;
+unsigned char flag_send_raw = 0;
+unsigned char flag_write_serial = 1;
 
 
 
@@ -127,13 +122,12 @@ void setup() {
     pinMode(PULSE_PIN, OUTPUT);
     
     // join I2C bus (I2Cdev library doesn't do this automatically)
+    //HWire.begin();
     HWire.begin();
-    HWire.begin();
+    HWire2.begin();
 
     // initialize serial communication
-    // (115200 chosen because it is required for Teapot Demo output, but it's
-    // really up to you depending on your project)
-    Serial.begin(250000);
+    Serial.begin(115200);
     while (!Serial); // wait for Leonardo enumeration, others continue immediately
 
     // NOTE: 8MHz or slower host processors, like the Teensy @ 3.3v or Ardunio
@@ -162,15 +156,13 @@ void setup() {
     
     for(i=0;i<5;i++) {digitalWrite(LED_PIN, HIGH);delay(10);digitalWrite(LED_PIN, LOW);delay(300);}
 
+    HWire.beginTransmission(address);
     // Set Accel Full Scale to 4g
     mpu1.setFullScaleAccelRange(MPU6050_ACCEL_FS_4);
-    mpu2.setFullScaleAccelRange(MPU6050_ACCEL_FS_4);
     // Set Gyroscope full scale to 500 deg/sec
     mpu1.setFullScaleGyroRange(MPU6050_GYRO_FS_500);
-    mpu2.setFullScaleGyroRange(MPU6050_GYRO_FS_500);
     // Set bandwith to 256 Hz //switch to MPU6050_DLPF_BW_42 for previous configuration
     mpu1.setDLPFMode(MPU6050_DLPF_BW_256);
-    mpu2.setDLPFMode(MPU6050_DLPF_BW_256);
     
     mpu1.setXAccelOffset(-114);
     mpu1.setYAccelOffset(-166);
@@ -179,12 +171,20 @@ void setup() {
     mpu1.setYGyroOffset(-29);
     mpu1.setZGyroOffset(97);
 
+    HWire.endTransmission();
+
+    HWire2.beginTransmission(address);
+    mpu2.setFullScaleAccelRange(MPU6050_ACCEL_FS_4);
+    mpu2.setFullScaleGyroRange(MPU6050_GYRO_FS_500);
+    mpu2.setDLPFMode(MPU6050_DLPF_BW_256);
     mpu2.setXAccelOffset(-114);
     mpu2.setYAccelOffset(-166);
     mpu2.setZAccelOffset(1259);
     mpu2.setXGyroOffset(138);
     mpu2.setYGyroOffset(-29);
     mpu2.setZGyroOffset(97);
+    
+    HWire2.endTransmission();
 
 }
 
@@ -199,9 +199,7 @@ void loop() {
     // reset interrupt flag and get INT_STATUS byte
     //mpuInterrupt = false;
     //mpuIntStatus = mpu.getIntStatus();
-    
-    unsigned char flag_send_raw = 0;
-    unsigned char flag_write_serial = 1;
+   
     while(1){
         unsigned char c = Serial.read();
       switch(c)
@@ -224,11 +222,20 @@ void loop() {
     
     //blink RED LED
     //digitalWrite(LED_PIN, (millis()%1000)<10);
+    digitalWrite(LED_PIN, (millis()%1000)<10);
+    digitalWrite(PULSE_PIN, blinkState);
+    blinkState = !blinkState;
+    HWire.beginTransmission(address);
+    HWire2.beginTransmission(address);
     
     micros_sample = micros();
     mpu1.getMotion6(&AcX1, &AcY1, &AcZ1, &GyX1, &GyY1, &GyZ1);
+    
     micros_sample_m = micros();
     mpu2.getMotion6(&AcX2, &AcY2, &AcZ2, &GyX2, &GyY2, &GyZ2);
+    
+    HWire.endTransmission();
+    HWire2.endTransmission();
     if (flag_send_raw)
   {
     Serial.print(AcX1);
@@ -282,6 +289,9 @@ void loop() {
 
     Serial.write(buffC,25);
   }
+
+  digitalWrite(PULSE_PIN, blinkState);
+  blinkState = !blinkState;
 
   if ((!flag_write_serial) && (!flag_send_raw)){
     Serial.print("ts 1 : "); Serial.print(micros_sample);

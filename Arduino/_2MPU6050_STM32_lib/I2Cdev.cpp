@@ -46,7 +46,7 @@ THE SOFTWARE.
 #include "I2Cdev.h"
 
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
-
+    #include "HardWire.h"
     #ifdef I2CDEV_IMPLEMENTATION_WARNINGS
         #if ARDUINO < 100
             #warning Using outdated Arduino IDE with Wire library is functionally limiting.
